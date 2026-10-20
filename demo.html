@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SIEM Dashboard — Demo</title>
+<style>
+  :root {
+    --bg:#0f172a; --panel:#1e293b; --border:#334155; --text:#e2e8f0;
+    --muted:#94a3b8; --accent:#3b82f6; --green:#10b981; --red:#ef4444;
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); }
+  .app { min-height:100vh; }
+  .demo-banner {
+    display:flex; align-items:center; gap:10px; padding:7px 20px;
+    background:#b45309; color:#fffbeb; font-size:13px;
+  }
+  .demo-banner b { letter-spacing:.5px; }
+  .spacer-inline { flex:1; }
+  .role-switch { padding:3px 12px; font-size:12px; background:#92400e; border:none; border-radius:6px; color:#fffbeb; cursor:pointer; }
+  .role-switch:disabled { opacity:.55; cursor:default; }
+  nav { display:flex; align-items:center; gap:14px; padding:10px 20px; background:var(--panel); border-bottom:1px solid var(--border); }
+  .brand { font-weight:700; color:var(--accent); letter-spacing:1px; }
+  nav a { color:var(--muted); text-decoration:none; padding:6px 10px; border-radius:6px; cursor:pointer; }
+  nav a.active { color:var(--text); background:var(--border); }
+  .spacer { flex:1; }
+  .user { color:var(--muted); font-size:13px; }
+  .role { color:var(--accent); font-size:12px; text-transform:uppercase; }
+  main { padding:20px; max-width:1400px; margin:0 auto; }
+  .toolbar { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .toolbar select { background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:7px 10px; }
+  .toolbar .count { color:var(--muted); font-size:13px; }
+  .live-dot { width:8px; height:8px; border-radius:50%; background:var(--green); display:inline-block; margin-right:6px; animation:pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity:.3; } }
+  input[type=text] { background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:8px 10px; }
+  button { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:8px 12px; cursor:pointer; font-size:13px; }
+  button:hover { filter:brightness(1.12); }
+  button:disabled { opacity:.5; cursor:default; }
+  table { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--border); border-radius:8px; font-size:13px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; }
+  td.actions { white-space:nowrap; }
+  .actions button { padding:4px 8px; font-size:12px; margin-right:4px; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:999px; font-weight:600; font-size:12px; }
+  .pill.critical { background:var(--red); color:#fff; }
+  .pill.high { background:#f97316; }
+  .pill.medium { background:#eab308; }
+  .pill.low { background:#60a5fa; }
+  .badge { display:inline-block; padding:2px 9px; border-radius:999px; background:var(--green); color:#052e16; font-size:11px; font-weight:700; }
+  .empty { color:var(--muted); padding:24px; text-align:center; }
+  .toast {
+    position:fixed; bottom:20px; right:20px; background:var(--panel);
+    border:1px solid var(--accent); border-radius:8px; padding:12px 16px;
+    max-width:380px; box-shadow:0 8px 24px rgba(0,0,0,.45); z-index:50;
+  }
+  .toast b { color:var(--accent); }
+  .dashboards { display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:20px; }
+  .chart-card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .chart-card h3 { font-size:14px; color:var(--muted); margin-bottom:10px; font-weight:600; }
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:7px; font-size:12px; }
+  .bar-row .label { width:230px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar-row .track { flex:1; background:var(--bg); border-radius:4px; height:16px; overflow:hidden; }
+  .bar-row .fill { height:100%; border-radius:4px; background:var(--accent); }
+  .bar-row .val { width:30px; text-align:right; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:10px; font-size:12px; color:var(--muted); }
+  .legend span::before { content:''; display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; background:var(--c); }
+  h2 { font-size:16px; margin-bottom:12px; }
+  .incident-create { margin-top:12px; }
+  .incident-create input { flex:1; max-width:320px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="demo-banner">
+    <b>DEMO MODE</b> — simulated data, no backend &nbsp;·&nbsp; alerts stream live
+    <span class="spacer-inline"></span>
+    Viewing as:
+    <button class="role-switch" id="role-analyst" onclick="setRole('analyst')">analyst</button>
+    <button class="role-switch" id="role-admin" onclick="setRole('admin')">admin</button>
+  </div>
+  <nav>
+    <span class="brand">SIEM</span>
+    <a id="tab-alerts" class="active" onclick="showTab('alerts')">Alerts</a>
+    <a id="tab-incidents" onclick="showTab('incidents')">Incidents</a>
+    <a id="tab-dashboards" onclick="showTab('dashboards')">Dashboards</a>
+    <span class="spacer"></span>
+    <span class="role" id="nav-role">analyst</span>
+    <span class="user">demo.analyst@lab.local</span>
+  </nav>
+  <main>
+    <section id="view-alerts">
+      <div class="toolbar">
+        <select id="status-filter" onchange="renderAlerts()">
+          <option value="all">All statuses</option>
+          <option value="new">new</option>
+          <option value="ack">ack</option>
+          <option value="escalated">escalated</option>
+          <option value="resolved">resolved</option>
+        </select>
+        <span class="count"><span class="live-dot"></span><span id="alert-count">0</span> alerts (live)</span>
+      </div>
+      <table>
+        <thead><tr>
+          <th></th><th>Time</th><th>Level</th><th>Rule</th><th>Description</th>
+          <th>Agent</th><th>Source IP</th><th>MITRE</th><th>VT</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="alert-rows"></tbody>
+      </table>
+      <div class="toolbar incident-create" id="incident-create" style="display:none">
+        <input type="text" id="incident-title" placeholder="Incident title" />
+        <button id="btn-incident" onclick="createIncident()">Create incident (0)</button>
+      </div>
+    </section>
+    <section id="view-incidents" style="display:none">
+      <h2>Incidents</h2>
+      <table>
+        <thead><tr><th>Created</th><th>Title</th><th>Alerts</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="incident-rows"></tbody>
+      </table>
+      <p class="empty" id="incidents-empty">No incidents yet. Select alerts on the Alerts page to create one.</p>
+    </section>
+    <section id="view-dashboards" style="display:none" class="dashboards">
+      <div class="chart-card"><h3>Alert volume (per hour, last 24h)</h3><div id="chart-volume"></div></div>
+      <div class="chart-card"><h3>Top rules</h3><div id="chart-rules"></div></div>
+      <div class="chart-card"><h3>ATT&amp;CK tactics</h3><div id="chart-tactics"></div></div>
+      <div class="chart-card"><h3>Agent activity</h3><div id="chart-agents"></div></div>
+    </section>
+  </main>
+</div>
+<script>
+const TACTIC_COLORS = ['#3b82f6','#e74c3c','#f1c40f','#2ecc71','#9b59b6','#e67e22','#1abc9c','#95a5a6','#34495e','#d35400'];
+const TEMPLATES = [
+  { rule_id:'5710', level:5, description:'sshd: Attempt to login using a non-existent user', mitre:'T1110.001', tactic:'Credential Access', src:['185.220.101.34','45.155.205.233','203.0.113.9'], weight:30 },
+  { rule_id:'5712', level:10, description:'sshd: brute force trying to get access to the system.', mitre:'T1110.001', tactic:'Credential Access', src:['185.220.101.34','45.155.205.233','203.0.113.9'], weight:6, soar:true, vt:0 },
+  { rule_id:'40601', level:8, description:'sshd: Possible port scan from a remote host.', mitre:'T1046', tactic:'Discovery', src:['198.51.100.77','103.97.3.44'], weight:14, vt:42 },
+  { rule_id:'5402', level:5, description:'sudo: authentication failure.', mitre:'T1548.003', tactic:'Privilege Escalation', src:[], user:['deploy','svc-backup','chris'], weight:14 },
+  { rule_id:'5405', level:8, description:'sudo: 3 or more consecutive failed sudo logins.', mitre:'T1548.003', tactic:'Privilege Escalation', src:[], user:['deploy','svc-backup'], weight:8 },
+  { rule_id:'31103', level:5, description:'Web server 400 error code (attempt to bypass security).', mitre:'T1190', tactic:'Initial Access', src:['192.0.2.140','203.0.113.201'], weight:10, vt:7 },
+  { rule_id:'87105', level:7, description:'Linux process running with suspicious name (mimicking kernel thread).', mitre:'T1036.005', tactic:'Defense Evasion', src:['185.220.101.34'], weight:6, vt:31 },
+  { rule_id:'5541', level:4, description:'sshd: Service accepted (successful login).', mitre:'T1078', tactic:'Defense Evasion', src:['203.0.113.9','198.51.100.12'], weight:12 },
+];
+const AGENTS = [ {id:'001',name:'ubuntu-agent-01'}, {id:'002',name:'ubuntu-agent-02'}, {id:'003',name:'web-agent-03'} ];
+const MINUTE = 60*1000;
+const rand = n => Math.floor(Math.random()*n);
+const pick = a => a[rand(a.length)];
+const ago = m => new Date(Date.now()-m*MINUTE).toISOString();
+const WEIGHTED = TEMPLATES.flatMap(t => Array(t.weight).fill(t));
+
+let role = 'analyst';
+let alerts = [], incidents = [], responses = [];
+let selected = [];
+let tab = 'alerts';
+
+function makeAlert(t, ts) {
+  const agent = pick(AGENTS);
+  const id = (agent.id+'_'+t.rule_id+'_'+ts).replace(/[^a-zA-Z0-9_-]/g,'_');
+  const a = {
+    id, agent: agent.name, agent_id: agent.id, rule_id: t.rule_id, level: t.level,
+    description: t.description, mitre: { id: t.mitre, tactic: t.tactic },
+    src_ip: t.user ? '' : pick(t.src), srcuser: t.user ? pick(t.user) : '',
+    status: pick(['new','new','new','ack','resolved']), firstSeen: ts, updatedAt: ts,
+  };
+  if (t.vt) a.vt = { score: t.vt, cached: Math.random() < .5 };
+  return a;
+}
+
+function seed() {
+  for (let i=0;i<40;i++) {
+    const a = makeAlert(pick(WEIGHTED), ago(rand(24*60)));
+    if (!alerts.some(x => x.id === a.id)) alerts.push(a);
+  }
+  const brute = alerts.find(a => a.rule_id === '5712');
+  if (brute) responses.push({ triggerAlertId: brute.id, src_ip: brute.src_ip });
+  alerts.sort((a,b) => a.firstSeen < b.firstSeen ? 1 : -1);
+}
+
+function inject() {
+  const t = pick(WEIGHTED);
+  const a = makeAlert(t, new Date().toISOString());
+  alerts.unshift(a);
+  if (t.soar) responses.push({ triggerAlertId: a.id, src_ip: a.src_ip });
+  if (a.level >= 10) toast(`SIEM alert level ${a.level}`, `${a.description} (agent ${a.agent}, rule ${a.rule_id})`);
+  renderAll();
+}
+
+function levelClass(l) { return l>=10?'critical':l>=7?'high':l>=4?'medium':'low'; }
+function hhmmss(iso) { return iso.slice(11,19); }
+function responded(id) { return responses.some(r => r.triggerAlertId === id); }
+
+function setRole(r) {
+  role = r;
+  document.getElementById('nav-role').textContent = r;
+  document.getElementById('role-analyst').disabled = r==='analyst';
+  document.getElementById('role-admin').disabled = r==='admin';
+  renderAll();
+}
+
+function showTab(t) {
+  tab = t;
+  for (const v of ['alerts','incidents','dashboards']) {
+    document.getElementById('view-'+v).style.display = v===t ? '' : 'none';
+    document.getElementById('tab-'+v).className = v===t ? 'active' : '';
+  }
+  if (t === 'dashboards') renderDashboards();
+}
+
+function toast(title, body) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<b>${title}</b><br>${body}`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 8000);
+}
+
+function setStatus(id, status) {
+  const a = alerts.find(x => x.id === id);
+  if (a) { a.status = status; a.updatedAt = new Date().toISOString(); renderAll(); }
+}
+
+function takeAlert(id) {
+  const a = alerts.find(x => x.id === id);
+  if (a) { a.status = 'ack'; renderAll(); }
+}
+
+function toggleSelect(id) {
+  selected = selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id];
+  renderAlerts();
+}
+
+function createIncident() {
+  const title = document.getElementById('incident-title').value.trim();
+  if (!title || selected.length === 0) return;
+  incidents.unshift({ id: 'inc-'+rand(99999), title, alertIds: [...selected], status: 'open', createdAt: new Date().toISOString() });
+  selected.forEach(id => { const a = alerts.find(x => x.id === id); if (a) a.status = 'ack'; });
+  selected = [];
+  document.getElementById('incident-title').value = '';
+  renderAll();
+}
+
+function setIncidentStatus(id, status) {
+  const i = incidents.find(x => x.id === id);
+  if (i) { i.status = status; renderIncidents(); }
+}
+
+function renderAlerts() {
+  const filter = document.getElementById('status-filter').value;
+  const rows = alerts.filter(a => filter === 'all' || a.status === filter);
+  document.getElementById('alert-count').textContent = alerts.length;
+  const tbody = document.getElementById('alert-rows');
+  tbody.innerHTML = rows.map(a => `<tr>
+    <td><input type="checkbox" ${selected.includes(a.id)?'checked':''} onchange="toggleSelect('${a.id}')"/></td>
+    <td>${hhmmss(a.firstSeen)}</td>
+    <td><span class="pill ${levelClass(a.level)}">${a.level}</span></td>
+    <td>${a.rule_id}</td>
+    <td>${a.description}</td>
+    <td>${a.agent}</td>
+    <td>${a.srcuser ? a.srcuser+' (user)' : a.src_ip || '—'}</td>
+    <td>${a.mitre.id}</td>
+    <td>${a.vt ? a.vt.score+(a.vt.cached?' <small>(cached)</small>':'') : '—'}</td>
+    <td>${a.status}</td>
+    <td class="actions">
+      <button onclick="setStatus('${a.id}','ack')">Ack</button>
+      <button onclick="setStatus('${a.id}','escalated')">Escalate</button>
+      <button onclick="setStatus('${a.id}','resolved')">Resolve</button>
+      <button onclick="takeAlert('${a.id}')">Take</button>
+      ${responded(a.id)?'<span class="badge" title="SOAR firewall-drop executed">auto-responded</span>':''}
+    </td>
+  </tr>`).join('');
+  const box = document.getElementById('incident-create');
+  box.style.display = selected.length ? 'flex' : 'none';
+  document.getElementById('btn-incident').textContent = `Create incident (${selected.length})`;
+  document.getElementById('btn-incident').disabled = !document.getElementById('incident-title').value.trim();
+}
+
+function renderIncidents() {
+  const tbody = document.getElementById('incident-rows');
+  document.getElementById('incidents-empty').style.display = incidents.length ? 'none' : '';
+  tbody.innerHTML = incidents.map(i => `<tr>
+    <td>${hhmmss(i.createdAt)}</td>
+    <td>${i.title}</td>
+    <td>${i.alertIds.length}</td>
+    <td>${i.status}</td>
+    <td class="actions">
+      <button onclick="setIncidentStatus('${i.id}','investigating')">Investigate</button>
+      <button onclick="setIncidentStatus('${i.id}','resolved')">Resolve</button>
+      ${role==='admin'?`<button onclick="setIncidentStatus('${i.id}','closed')">Close</button>`:''}
+    </td>
+  </tr>`).join('');
+}
+
+function aggregate(keyFn) {
+  const m = new Map();
+  for (const a of alerts) {
+    const k = keyFn(a);
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+  return [...m.entries()].sort((x,y) => y[1]-x[1]);
+}
+
+function barChart(el, rows, max, colorFn) {
+  el.innerHTML = rows.map(([label, val]) => `<div class="bar-row">
+    <span class="label" title="${label}">${label}</span>
+    <span class="track"><span class="fill" style="width:${(val/max*100).toFixed(1)}%;${colorFn?`background:${colorFn(label)}`:''}"></span></span>
+    <span class="val">${val}</span>
+  </div>`).join('');
+}
+
+function renderDashboards() {
+  const byHour = new Map();
+  for (const a of alerts) {
+    const h = a.firstSeen.slice(0,13)+':00';
+    byHour.set(h, (byHour.get(h) || 0)+1);
+  }
+  const hours = [...byHour.entries()].sort((a,b) => a[0].localeCompare(b[0])).slice(-24);
+  const maxV = Math.max(...hours.map(x => x[1]), 1);
+  barChart(document.getElementById('chart-volume'), hours, maxV, () => '#3b82f6');
+
+  const rules = aggregate(a => `${a.rule_id} ${a.description}`).slice(0,6);
+  barChart(document.getElementById('chart-rules'), rules, Math.max(...rules.map(r => r[1]),1), () => '#e67e22');
+
+  const tactics = aggregate(a => a.mitre.tactic);
+  const maxT = Math.max(...tactics.map(t => t[1]),1);
+  const colorMap = Object.fromEntries(tactics.map(([t],i) => [t, TACTIC_COLORS[i % TACTIC_COLORS.length]]));
+  barChart(document.getElementById('chart-tactics'), tactics, maxT, t => colorMap[t]);
+  document.getElementById('chart-tactics').insertAdjacentHTML('beforeend',
+    `<div class="legend">${tactics.map(([t]) => `<span style="--c:${colorMap[t]}">${t}</span>`).join('')}</div>`);
+
+  const agents = aggregate(a => `${a.agent} (${a.agent_id})`);
+  const maxA = Math.max(...agents.map(a => a[1]),1);
+  const maxLevel = new Map();
+  for (const a of alerts) maxLevel.set(a.agent, Math.max(maxLevel.get(a.agent) || 0, a.level));
+  barChart(document.getElementById('chart-agents'), agents, maxA, () => '#2ecc71');
+  document.getElementById('chart-agents').insertAdjacentHTML('beforeend',
+    `<div class="legend">${agents.map(([a]) => `<span>max level ${maxLevel.get(a.split(' ')[0])} — ${a}</span>`).join('')}</div>`);
+}
+
+function renderAll() {
+  renderAlerts();
+  renderIncidents();
+  if (tab === 'dashboards') renderDashboards();
+}
+
+document.getElementById('incident-title').addEventListener('input', renderAlerts);
+seed();
+renderAll();
+setInterval(() => {
+  if (Math.random() < .15) { for (let i=0;i<4+rand(4);i++) inject(); setTimeout(inject, 3000); }
+  else inject();
+}, 9000);
+</script>
+</body>
+</html>

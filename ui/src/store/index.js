@@ -1,5 +1,4 @@
 import { demoStore } from './demoStore.js';
-import { firebaseStore } from './firebaseStore.js';
 
 const params = new URLSearchParams(window.location.search);
 if (params.get('demo') !== null) {
@@ -11,4 +10,9 @@ if (params.get('live') !== null) {
 
 export const isDemo = import.meta.env.VITE_DEMO_MODE === '1' || localStorage.getItem('demo-mode') === '1';
 
-export const store = isDemo ? demoStore : firebaseStore;
+export let store = demoStore;
+
+if (!isDemo) {
+  const { firebaseStore } = await import('./firebaseStore.js');
+  store = firebaseStore;
+}
