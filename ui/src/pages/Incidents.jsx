@@ -1,18 +1,10 @@
-import { useEffect, useState } from 'react';
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '../firebase.js';
 import { useAuth } from '../auth.jsx';
 import { setIncidentStatus } from '../lib/api.js';
+import { useLiveCollection } from '../lib/useLiveCollection.js';
 
 export default function Incidents() {
   const { user, isAdmin } = useAuth();
-  const [incidents, setIncidents] = useState([]);
-
-  useEffect(() => {
-    const q = query(collection(db, 'incidents'), orderBy('createdAt', 'desc'), limit(100));
-    const unsub = onSnapshot(q, (snap) => setIncidents(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
-    return unsub;
-  }, []);
+  const incidents = useLiveCollection('incidents', 'createdAt');
 
   return (
     <div>

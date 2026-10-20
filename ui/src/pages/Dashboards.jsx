@@ -1,18 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '../firebase.js';
+import { useLiveCollection } from '../lib/useLiveCollection.js';
 
 const TACTIC_COLORS = ['#3b82f6', '#e74c3c', '#f1c40f', '#2ecc71', '#9b59b6', '#e67e22', '#1abc9c', '#95a5a6', '#34495e', '#d35400', '#16a085', '#c0392b'];
 
 export default function Dashboards() {
-  const [alerts, setAlerts] = useState([]);
-
-  useEffect(() => {
-    const q = query(collection(db, 'alerts'), orderBy('firstSeen', 'desc'), limit(1000));
-    const unsub = onSnapshot(q, (snap) => setAlerts(snap.docs.map((d) => d.data())));
-    return unsub;
-  }, []);
+  const alerts = useLiveCollection('alerts', 'firstSeen');
 
   const volume = useMemo(() => {
     const byHour = new Map();

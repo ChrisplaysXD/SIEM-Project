@@ -56,6 +56,17 @@ Key design points:
 └── docs/                           # Report, architecture diagram, MITRE mapping (Week 4)
 ```
 
+## Demo mode (no backend)
+
+The UI runs standalone with a simulated data feed — no Firebase, no VMs, no bridge:
+
+```bash
+cd ui && npm install && npm run dev
+# open http://localhost:5173/?demo=1
+```
+
+`?demo=1` persists the mode in localStorage; `?live=1` switches back (or clear site data). Demo mode seeds ~40 realistic alerts (brute force bursts, port scans, sudo failures, VT-enriched), streams new ones every ~9s, fires simulated level-10 push toasts, mirrors SOAR `response_actions` for brute-force alerts, and lets you flip between analyst/admin roles from the banner. Everything else — status flow, incident creation, dashboards — behaves like the live app.
+
 ## Validation Plan
 
 End-to-end acceptance chain (manual demo):
