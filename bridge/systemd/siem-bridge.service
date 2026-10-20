@@ -1,0 +1,26 @@
+[Unit]
+Description=SIEM bridge: Wazuh alerts.json -> Firestore/FCM
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=siem-bridge
+Group=siem-bridge
+EnvironmentFile=/etc/siem-bridge/bridge.env
+ExecStart=/usr/bin/node /opt/siem-bridge/src/index.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/var/ossec/logs/alerts
+ReadWritePaths=/var/lib/siem-bridge
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

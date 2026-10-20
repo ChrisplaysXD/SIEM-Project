@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function role() {
+      return request.auth.token.role;
+    }
+    function isAdmin() {
+      return signedIn() && role() == 'admin';
+    }
+    function isAnalyst() {
+      return signedIn() && role() in ['analyst', 'admin'];
+    }
+
+    // Alerts are created by the bridge (Admin SDK bypasses rules).
+    match /alerts/{alertId} {
+      allow get, list: if isAnalyst();
+      allow update: if isAnalyst()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'assignedTo', 'updatedAt'])
+        && request.resource.data.status in ['new', 'ack', 'escalated', 'resolved'];
+      allow create, delete: if false;
+    }
+
+    match /incidents/{incidentId} {
+      allow read: if isAnalyst();
+      allow create, update: if isAnalyst();
+      allow delete: if isAdmin();
+    }
+
+    // Written only by the bridge after active responses execute.
+    match /response_actions/{id} {
+      allow read: if isAnalyst();
+      allow write: if false;
+    }
+
+    // Append-only audit trail; readable by admins only.
+    match /audit/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}
