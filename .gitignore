@@ -1,6 +1,14 @@
-# Service account keys — NEVER commit (mode 600, root-owned)
-/etc/siem-bridge/sa.json
-/etc/siem-bridge/*.json
+# Service account keys / secrets — NEVER commit
+**/sa.json
+**/bridge.env
+ui/.env
+
+# Generated TLS certs (private keys)
+config/wazuh_indexer_ssl_certs/
+
+# Runtime data (logs, indexer, splunk state)
+data/
+ui/public/firebase-messaging-sw.js
 
 # Node
 node_modules/

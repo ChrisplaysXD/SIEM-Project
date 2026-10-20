@@ -1,11 +1,4 @@
-version: "3.9"
-
-# Wazuh single-node + Splunk Enterprise + Universal Forwarder (SOC VM only)
-# Containers run ONLY inside the SOC VM per environment rule (no Docker Desktop on host).
-# Source of truth: .kilo/plans/1792475736112-siem-firebase-cloud-project.md
-
 services:
-  # Wazuh single-node (manager + indexer + dashboard)
   wazuh.manager:
     image: wazuh/wazuh-manager:4.9.0
     hostname: wazuh.manager
@@ -15,14 +8,21 @@ services:
       - "1514:1514"
       - "1515:1515"
       - "55000:55000"
+    environment:
+      - INDEXER_URL=https://wazuh.indexer:9200
+      - INDEXER_USERNAME=admin
+      - INDEXER_PASSWORD=SecretPassword
+      - FILEBEAT_SSL_VERIFICATION_MODE=full
+      - SSL_CERTIFICATE_AUTHORITIES=/etc/ssl/root-ca.pem
+      - SSL_CERTIFICATE=/etc/ssl/filebeat.pem
+      - SSL_KEY=/etc/ssl/filebeat.key
     volumes:
-      - wazuh_api_configuration:/var/ossec/api/configuration
-      - wazuh_etc:/var/ossec/etc
-      - wazuh_logs:/var/ossec/logs
-      - wazuh_queue:/var/ossec/queue
-      - wazuh_var_multigroup:/var/ossec/var/multigroup
-      - wazuh_filebeat_etc:/etc/filebeat
-      - wazuh_filebeat_var:/var/lib/filebeat
+      - ./config/wazuh_indexer_ssl_certs/root-ca-manager.pem:/etc/ssl/root-ca.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/wazuh.manager.pem:/etc/ssl/filebeat.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/wazuh.manager-key.pem:/etc/ssl/filebeat.key:ro
+      - ./config/wazuh_cluster/wazuh_manager.conf:/wazuh-config-mount/etc/ossec.conf:ro
+      - ./data/ossec/logs:/var/ossec/logs
+    mem_limit: 1200m
     networks:
       - siem-net
 
@@ -34,7 +34,15 @@ services:
     ports:
       - "9200:9200"
     environment:
-      - NODE_NAME=wazuh.indexer
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+    volumes:
+      - ./data/wazuh-indexer:/var/lib/wazuh-indexer
+      - ./config/wazuh_indexer_ssl_certs/wazuh.indexer.pem:/usr/share/wazuh-indexer/certs/wazuh.indexer.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/wazuh.indexer-key.pem:/usr/share/wazuh-indexer/certs/wazuh.indexer-key.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/root-ca-indexer.pem:/usr/share/wazuh-indexer/certs/root-ca.pem:ro
+      - ./config/wazuh_indexer/wazuh1.indexer.yml:/usr/share/wazuh-indexer/opensearch.yml:ro
+      - ./config/wazuh_indexer/internal_users.yml:/usr/share/wazuh-indexer/opensearch-security/internal_users.yml:ro
+    mem_limit: 2600m
     ulimits:
       memlock:
         soft: -1
@@ -55,15 +63,23 @@ services:
     environment:
       - INDEXER_USERNAME=admin
       - INDEXER_PASSWORD=SecretPassword
-      - WAZUH_API_URL=https://wazuh.manager:55000
+      - WAZUH_API_URL=https://wazuh.manager
+      - DASHBOARD_USERNAME=kibanaserver
+      - DASHBOARD_PASSWORD=kibanaserver
       - API_USERNAME=wazuh-wui
-      - API_PASSWORD=MySecretPassword
+      - API_PASSWORD=MyS3cr3tP4ssw0rd
+    volumes:
+      - ./config/wazuh_indexer_ssl_certs/wazuh.dashboard.pem:/usr/share/wazuh-dashboard/certs/wazuh-dashboard.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/wazuh.dashboard-key.pem:/usr/share/wazuh-dashboard/certs/wazuh-dashboard-key.pem:ro
+      - ./config/wazuh_indexer_ssl_certs/root-ca-dashboard.pem:/usr/share/wazuh-dashboard/certs/root-ca.pem:ro
+      - ./config/wazuh_dashboard/opensearch_dashboards.yml:/usr/share/wazuh-dashboard/opensearch_dashboards.yml:ro
+      - ./config/wazuh_dashboard/wazuh.yml:/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml:ro
+    mem_limit: 1200m
     networks:
       - siem-net
 
-  # Splunk Enterprise (free tier — 500MB/day cap enforced via Wazuh pre-filter)
   splunk:
-    image: splunk/splunk:latest
+    image: splunk/splunk:9.2
     hostname: splunk
     container_name: splunk
     restart: unless-stopped
@@ -74,25 +90,31 @@ services:
     environment:
       - SPLUNK_START_ARGS=--accept-license
       - SPLUNK_PASSWORD=SplunkAdmin2026
-      - SPLUNK_HEC_TOKEN=00000000-0000-0000-0000-000000000000
     volumes:
-      - splunk_etc:/opt/splunk/etc
-      - splunk_var:/opt/splunk/var
-      # Wazuh alerts file mounted for Universal Forwarder tailing
-      - wazuh_logs:/wazuh-logs:ro
+      - ./data/splunk-etc:/opt/splunk/etc
+      - ./data/splunk-var:/opt/splunk/var
+    mem_limit: 2200m
     networks:
       - siem-net
 
-volumes:
-  wazuh_api_configuration:
-  wazuh_etc:
-  wazuh_logs:
-  wazuh_queue:
-  wazuh_var_multigroup:
-  wazuh_filebeat_etc:
-  wazuh_filebeat_var:
-  splunk_etc:
-  splunk_var:
+  wazuh.uf:
+    image: splunk/universalforwarder:9.2
+    hostname: wazuh-uf
+    container_name: wazuh-uf
+    restart: unless-stopped
+    environment:
+      - SPLUNK_STANDALONE_URL=splunk
+      - SPLUNK_PASSWORD=SplunkAdmin2026
+    volumes:
+      - ./data/ossec/logs:/wazuh-logs:ro
+      - ./scripts/splunk/inputs.conf:/opt/splunkforwarder/etc/system/local/inputs.conf:ro
+    group_add:
+      - "999"
+    mem_limit: 600m
+    depends_on:
+      - splunk
+    networks:
+      - siem-net
 
 networks:
   siem-net:

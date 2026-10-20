@@ -36,10 +36,21 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Append-only audit trail; readable by admins only.
+    // Append-only audit trail; analysts may append, admins may read.
     match /audit/{id} {
       allow read: if isAdmin();
-      allow write: if false;
+      allow create: if isAnalyst()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.action is string;
+      allow update, delete: if false;
+    }
+
+    // FCM tokens registered by the UI; bridge subscribes them to the topic.
+    match /fcm_tokens/{tokenId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn();
+      allow delete: if false;
     }
   }
 }

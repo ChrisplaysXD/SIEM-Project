@@ -1,46 +1,50 @@
-# Makefile — SIEM Cloud Computing Project
-# Source of truth: .kilo/plans/1792475736112-siem-firebase-cloud-project.md
+SHELL := /bin/bash
 
-.PHONY: init compose-up compose-down inject-test-alert demo clean verify
+.PHONY: help setup-config certs compose-up compose-down clean restart inject-test-alert verify demo
 
-# Start Wazuh + Splunk containers (SOC VM only — never host)
+help:
+	@echo "Targets:"
+	@echo "  setup-config      download official Wazuh configs + generate TLS certs"
+	@echo "  compose-up        start Wazuh + Splunk + UF (SOC VM only)"
+	@echo "  compose-down      stop containers (keeps data volumes)"
+	@echo "  clean             stop containers AND wipe data volumes (destructive)"
+	@echo "  restart           recreate containers after config changes"
+	@echo "  inject-test-alert append a synthetic alert for offline bridge/UI testing"
+	@echo "  verify            run the Splunk 500MB/day cap check"
+	@echo "  demo              print the end-to-end attack demo walkthrough"
+
+setup-config:
+	./provision/soc-vm/setup-config.sh
+
+certs:
+	docker compose -f generate-indexer-certs.yml run --rm generator
+
 compose-up:
-	docker-compose -f docker-compose.yml up -d wazuh.manager wazuh.indexer wazuh.dashboard splunk
+	docker compose up -d --wait
 
 compose-down:
-	docker-compose -f docker-compose.yml down -v || true
+	docker compose down
 
-# Smoke test: inject a synthetic Wazuh alert payload into Firestore (offline UI test)
-# This simulates the bridge tail → normalize → write flow.
-inject-test-alert:
-	@echo "Injecting synthetic test alert (simulates bridge path)..."
-	@echo '{"agent":{"id":"test-agent-001","name":"test-agent"},"rule":{"id":"100001","level":8,"description":"Synthetic brute-force test"},"timestamp":"$(shell date -Iseconds)","src_ip":"10.0.0.42","mitre":{"tactic":"TA0006","id":"T1110"}}' > /tmp/test-alert.json
-	@echo "Test payload written to /tmp/test-alert.json"
-	@echo "Run bridge daemon to push to Firestore, or load manually for UI smoke testing."
+restart:
+	docker compose down
+	docker compose up -d --wait
 
-# End-to-end demo: runs attack scenario sequence + inject test
-# Note: requires agent VM running; containers must be up.
-demo: compose-up
-	@echo "=== DEMO SEQUENCE ==="
-	@echo "1. Verify agent VM is running (Wazuh agent enrolled)."
-	@echo "2. Run hydra on agent VM (SSH brute force)."
-	@echo "3. Check Wazuh dashboard (<30s alert)."
-	@echo "4. Check Splunk: index=main earliest=-24h | stats count"
-	@echo "5. Check Firestore alerts collection (via bridge)."
-	@echo "6. Verify FCM push (level >= 10) and active response (iptables -L)."
-	@echo "=== Run inject-test-alert for offline UI verification ==="
-
-# Verify Splunk cap (< 500MB/day)
-verify:
-	@echo "Run inside Splunk container or via UF: index=main earliest=-24h | stats count"
-
-# Clean containers and volumes (caution: removes Splunk data)
 clean:
-	docker-compose -f docker-compose.yml down -v || true
-	rm -f /tmp/test-alert.json
+	docker compose down -v --remove-orphans
+	rm -rf data
 
-# Initialize: git setup, permissions, first commit
-init:
-	chmod 600 .git/info/* 2>/dev/null || true
-	git add -A
-	git commit -m "feat: initial repo skeleton (docker-compose, provision, README)" || echo "Nothing to commit."
+inject-test-alert:
+	node scripts/inject-test-alert.js
+
+verify:
+	@docker exec splunk /opt/splunk/bin/splunk search "index=main earliest=-24h | stats count" -auth admin:SplunkAdmin2026
+
+demo: compose-up
+	@echo "=== END-TO-END DEMO ==="
+	@echo "1. Agent VM:   ./scripts/demo/bruteforce.sh <soc-ip>"
+	@echo "2. Wazuh:      dashboard alert for rules 5710/5712 within ~30s"
+	@echo "3. Splunk:     make verify (or index=main earliest=-24h | stats count)"
+	@echo "4. Firestore:  alerts/<doc> written by bridge (UI live via onSnapshot)"
+	@echo "5. FCM:        push received for level >= 10"
+	@echo "6. SOAR:       iptables -L -n on agent shows DROP for attacker IP"
+	@echo "Offline UI test: make inject-test-alert (bridge tails /tmp/siem-test-alerts.json)"

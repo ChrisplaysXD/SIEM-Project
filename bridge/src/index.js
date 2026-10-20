@@ -66,6 +66,24 @@ function isPrivateIp(ip) {
   return /^(10\.|127\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(ip);
 }
 
+async function subscribeTokens(db) {
+  const snap = await db.collection('fcm_tokens').where('subscribed', '==', false).limit(100).get();
+  if (snap.empty) {
+    return;
+  }
+  const tokens = snap.docs.map((d) => d.id);
+  const res = await admin.messaging().subscribeToTopic(tokens, config.fcmTopic);
+  const failed = new Set((res.errors || []).map((e) => e.index));
+  const batch = db.batch();
+  snap.docs.forEach((d, idx) => {
+    if (!failed.has(idx)) {
+      batch.update(d, { subscribed: true });
+    }
+  });
+  await batch.commit();
+  console.log(JSON.stringify({ event: 'tokens_subscribed', total: tokens.length, failed: res.failureCount }));
+}
+
 async function pollOnce(db, vt) {
   let fromPosition = loadOffset(config.offsetPath);
   const pending = [];
@@ -97,11 +115,21 @@ async function main() {
     requestsPerMinute: config.vtRequestsPerMinute,
   });
   console.log(JSON.stringify({ event: 'bridge_started', project: config.projectId }));
+  const tokenIntervalMs = 10 * 60 * 1000;
+  let nextTokenCheck = 0;
   for (;;) {
     try {
       await pollOnce(db, vt);
     } catch (err) {
       console.error(JSON.stringify({ event: 'poll_failed', error: String(err) }));
+    }
+    if (Date.now() >= nextTokenCheck) {
+      nextTokenCheck = Date.now() + tokenIntervalMs;
+      try {
+        await subscribeTokens(db);
+      } catch (err) {
+        console.error(JSON.stringify({ event: 'token_subscribe_failed', error: String(err) }));
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, config.pollIntervalMs));
   }

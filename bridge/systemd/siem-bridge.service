@@ -14,7 +14,6 @@ RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadOnlyPaths=/var/ossec/logs/alerts
 ReadWritePaths=/var/lib/siem-bridge
 ProtectKernelTunables=true
 ProtectKernelModules=true

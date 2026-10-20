@@ -19,7 +19,7 @@ export function loadConfig(env = process.env) {
     vtRequestsPerMinute: Number(env.VT_REQUESTS_PER_MINUTE || 4),
     fcmTopic: env.FCM_TOPIC || 'analysts',
     fcmMinLevel: Number(env.FCM_MIN_LEVEL || 10),
-    responseRuleIds: (env.RESPONSE_RULE_IDS || '5710,5712,31151')
+    responseRuleIds: (env.RESPONSE_RULE_IDS || '5710,5712')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),

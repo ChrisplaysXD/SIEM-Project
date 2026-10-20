@@ -1,0 +1,9 @@
+<!-- Wazuh manager ossec.conf snippet: SOAR firewall-drop on SSH brute force.
+     Insert before </ossec_config> on the SOC VM manager, then restart wazuh-manager.
+     firewall-drop is a built-in Wazuh command; timeout 600s = auto-unban. -->
+<active-response>
+  <command>firewall-drop</command>
+  <location>srcip</location>
+  <rules_id>5710,5712</rules_id>
+  <timeout>600</timeout>
+</active-response>
