@@ -1,18 +1,7 @@
-import { useEffect, useState } from 'react';
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '../firebase.js';
+import { useState } from 'react';
 import { useAuth } from '../auth.jsx';
 import { setAlertStatus, assignAlert, writeAudit, createIncident, STATUS_VALUES } from '../lib/api.js';
-
-function useLiveCollection(name, orderField) {
-  const [docs, setDocs] = useState([]);
-  useEffect(() => {
-    const q = query(collection(db, name), orderBy(orderField, 'desc'), limit(500));
-    const unsub = onSnapshot(q, (snap) => setDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
-    return unsub;
-  }, [name, orderField]);
-  return docs;
-}
+import { useLiveCollection } from '../lib/useLiveCollection.js';
 
 function levelClass(level) {
   if (level >= 10) return 'critical';

@@ -1,40 +1,22 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
-import { auth, googleProvider } from './firebase.js';
+import { store } from './store/index.js';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState({ user: null, role: null, loading: true });
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        try {
-          const token = await u.getIdTokenResult();
-          setRole(token.claims.role || 'analyst');
-        } catch {
-          setRole('analyst');
-        }
-      } else {
-        setRole(null);
-      }
-      setLoading(false);
-    });
-    return unsub;
-  }, []);
+  useEffect(() => store.onAuth((s) => setState({ ...s, loading: false })), []);
 
   const value = {
-    user,
-    role,
-    loading,
-    isAdmin: role === 'admin',
-    loginEmail: (email, password) => signInWithEmailAndPassword(auth, email, password),
-    loginGoogle: () => signInWithPopup(auth, googleProvider),
-    logout: () => signOut(auth),
+    user: state.user,
+    role: state.role,
+    loading: state.loading,
+    isAdmin: state.isAdmin,
+    isDemo: store.mode === 'demo',
+    loginEmail: (email, password) => store.loginEmail(email, password),
+    loginGoogle: () => store.loginGoogle(),
+    logout: () => store.logout(),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

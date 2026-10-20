@@ -140,3 +140,18 @@ table.alerts td:last-child { white-space: normal; }
 .dashboards { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; }
 
 .chart { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+
+.demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 20px;
+  background: #b45309;
+  color: #fffbeb;
+  font-size: 13px;
+}
+.demo-banner a { color: #fffbeb; text-decoration: underline; }
+.spacer-inline { flex: 1; }
+.role-switch { padding: 2px 10px; font-size: 12px; background: #92400e; }
+.role-switch:disabled { opacity: 0.6; }
+.badge.admin { background: #6366f1; color: white; }
