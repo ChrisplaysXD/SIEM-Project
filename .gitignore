@@ -1,0 +1,29 @@
+# Service account keys — NEVER commit (mode 600, root-owned)
+/etc/siem-bridge/sa.json
+/etc/siem-bridge/*.json
+
+# Node
+node_modules/
+.env
+.env.local
+*.log
+npm-debug.log*
+
+# Docker
+*.pid
+.docker/
+
+# Build artifacts
+dist/
+build/
+*.tgz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

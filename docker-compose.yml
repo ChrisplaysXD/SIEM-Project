@@ -1,0 +1,99 @@
+version: "3.9"
+
+# Wazuh single-node + Splunk Enterprise + Universal Forwarder (SOC VM only)
+# Containers run ONLY inside the SOC VM per environment rule (no Docker Desktop on host).
+# Source of truth: .kilo/plans/1792475736112-siem-firebase-cloud-project.md
+
+services:
+  # Wazuh single-node (manager + indexer + dashboard)
+  wazuh.manager:
+    image: wazuh/wazuh-manager:4.9.0
+    hostname: wazuh.manager
+    container_name: wazuh.manager
+    restart: unless-stopped
+    ports:
+      - "1514:1514"
+      - "1515:1515"
+      - "55000:55000"
+    volumes:
+      - wazuh_api_configuration:/var/ossec/api/configuration
+      - wazuh_etc:/var/ossec/etc
+      - wazuh_logs:/var/ossec/logs
+      - wazuh_queue:/var/ossec/queue
+      - wazuh_var_multigroup:/var/ossec/var/multigroup
+      - wazuh_filebeat_etc:/etc/filebeat
+      - wazuh_filebeat_var:/var/lib/filebeat
+    networks:
+      - siem-net
+
+  wazuh.indexer:
+    image: wazuh/wazuh-indexer:4.9.0
+    hostname: wazuh.indexer
+    container_name: wazuh.indexer
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+    environment:
+      - NODE_NAME=wazuh.indexer
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - siem-net
+
+  wazuh.dashboard:
+    image: wazuh/wazuh-dashboard:4.9.0
+    hostname: wazuh.dashboard
+    container_name: wazuh.dashboard
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      - INDEXER_USERNAME=admin
+      - INDEXER_PASSWORD=SecretPassword
+      - WAZUH_API_URL=https://wazuh.manager:55000
+      - API_USERNAME=wazuh-wui
+      - API_PASSWORD=MySecretPassword
+    networks:
+      - siem-net
+
+  # Splunk Enterprise (free tier — 500MB/day cap enforced via Wazuh pre-filter)
+  splunk:
+    image: splunk/splunk:latest
+    hostname: splunk
+    container_name: splunk
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "8089:8089"
+      - "9997:9997"
+    environment:
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_PASSWORD=SplunkAdmin2026
+      - SPLUNK_HEC_TOKEN=00000000-0000-0000-0000-000000000000
+    volumes:
+      - splunk_etc:/opt/splunk/etc
+      - splunk_var:/opt/splunk/var
+      # Wazuh alerts file mounted for Universal Forwarder tailing
+      - wazuh_logs:/wazuh-logs:ro
+    networks:
+      - siem-net
+
+volumes:
+  wazuh_api_configuration:
+  wazuh_etc:
+  wazuh_logs:
+  wazuh_queue:
+  wazuh_var_multigroup:
+  wazuh_filebeat_etc:
+  wazuh_filebeat_var:
+  splunk_etc:
+  splunk_var:
+
+networks:
+  siem-net:
+    driver: bridge
