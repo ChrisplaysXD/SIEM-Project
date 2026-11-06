@@ -10,34 +10,35 @@
     --muted:#94a3b8; --accent:#3b82f6; --green:#10b981; --red:#ef4444;
   }
   * { box-sizing:border-box; margin:0; }
-  body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); }
-  .app { min-height:100vh; }
+  body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; }
+  .app { min-height:100vh; display:flex; flex-direction:column; }
   .demo-banner {
-    display:flex; align-items:center; gap:10px; padding:7px 20px;
+    display:flex; align-items:center; flex-wrap:wrap; gap:8px 10px; padding:7px 20px;
     background:#b45309; color:#fffbeb; font-size:13px;
   }
   .demo-banner b { letter-spacing:.5px; }
-  .spacer-inline { flex:1; }
+  .spacer-inline { flex:1 1 auto; }
   .role-switch { padding:3px 12px; font-size:12px; background:#92400e; border:none; border-radius:6px; color:#fffbeb; cursor:pointer; }
   .role-switch:disabled { opacity:.55; cursor:default; }
-  nav { display:flex; align-items:center; gap:14px; padding:10px 20px; background:var(--panel); border-bottom:1px solid var(--border); }
+  nav { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; padding:10px 20px; background:var(--panel); border-bottom:1px solid var(--border); }
   .brand { font-weight:700; color:var(--accent); letter-spacing:1px; }
   nav a { color:var(--muted); text-decoration:none; padding:6px 10px; border-radius:6px; cursor:pointer; }
   nav a.active { color:var(--text); background:var(--border); }
-  .spacer { flex:1; }
+  .spacer { flex:1 1 auto; }
   .user { color:var(--muted); font-size:13px; }
   .role { color:var(--accent); font-size:12px; text-transform:uppercase; }
-  main { padding:20px; max-width:1400px; margin:0 auto; }
-  .toolbar { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-  .toolbar select { background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:7px 10px; }
+  main { padding:20px; width:100%; max-width:1400px; margin:0 auto; flex:1 1 auto; min-width:0; }
+  .toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px 12px; margin-bottom:12px; }
+  .toolbar select { background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:7px 10px; max-width:100%; }
   .toolbar .count { color:var(--muted); font-size:13px; }
   .live-dot { width:8px; height:8px; border-radius:50%; background:var(--green); display:inline-block; margin-right:6px; animation:pulse 2s infinite; }
   @keyframes pulse { 50% { opacity:.3; } }
-  input[type=text] { background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:8px 10px; }
+  input[type=text] { background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:8px 10px; max-width:100%; }
   button { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:8px 12px; cursor:pointer; font-size:13px; }
   button:hover { filter:brightness(1.12); }
   button:disabled { opacity:.5; cursor:default; }
-  table { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--border); border-radius:8px; font-size:13px; }
+  .table-wrap { width:100%; max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:8px; }
+  table { width:100%; min-width:900px; border-collapse:collapse; background:var(--panel); border:1px solid var(--border); border-radius:8px; font-size:13px; }
   th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
   th { color:var(--muted); font-weight:600; }
   td.actions { white-space:nowrap; }
@@ -52,22 +53,36 @@
   .toast {
     position:fixed; bottom:20px; right:20px; background:var(--panel);
     border:1px solid var(--accent); border-radius:8px; padding:12px 16px;
-    max-width:380px; box-shadow:0 8px 24px rgba(0,0,0,.45); z-index:50;
+    width:min(380px, calc(100vw - 40px)); box-shadow:0 8px 24px rgba(0,0,0,.45); z-index:50;
   }
   .toast b { color:var(--accent); }
-  .dashboards { display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:20px; }
-  .chart-card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .dashboards { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap:20px; }
+  .chart-card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; min-width:0; overflow:hidden; }
   .chart-card h3 { font-size:14px; color:var(--muted); margin-bottom:10px; font-weight:600; }
-  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:7px; font-size:12px; }
-  .bar-row .label { width:230px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .bar-row .track { flex:1; background:var(--bg); border-radius:4px; height:16px; overflow:hidden; }
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:7px; font-size:12px; min-width:0; }
+  .bar-row .label { width:clamp(110px, 34%, 230px); flex:0 1 auto; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar-row .track { flex:1 1 auto; min-width:40px; background:var(--bg); border-radius:4px; height:16px; overflow:hidden; }
   .bar-row .fill { height:100%; border-radius:4px; background:var(--accent); }
-  .bar-row .val { width:30px; text-align:right; }
+  .bar-row .val { width:30px; flex:0 0 auto; text-align:right; }
   .legend { display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:10px; font-size:12px; color:var(--muted); }
   .legend span::before { content:''; display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; background:var(--c); }
+  .legend span { max-width:100%; overflow-wrap:anywhere; }
   h2 { font-size:16px; margin-bottom:12px; }
   .incident-create { margin-top:12px; }
-  .incident-create input { flex:1; max-width:320px; }
+  .incident-create input { flex:1 1 200px; max-width:320px; }
+  @media (max-width:900px) {
+    main { padding:14px; }
+    .dashboards { grid-template-columns:1fr; }
+  }
+  @media (max-width:640px) {
+    main { padding:10px; }
+    nav { padding:8px 12px; gap:6px 10px; }
+    .demo-banner { padding:6px 12px; font-size:12px; }
+    .user { display:none; }
+    table { font-size:12px; min-width:760px; }
+    th, td { padding:6px 8px; }
+    .toolbar .count { width:100%; }
+  }
 </style>
 </head>
 <body>
@@ -100,13 +115,15 @@
         </select>
         <span class="count"><span class="live-dot"></span><span id="alert-count">0</span> alerts (live)</span>
       </div>
-      <table>
-        <thead><tr>
-          <th></th><th>Time</th><th>Level</th><th>Rule</th><th>Description</th>
-          <th>Agent</th><th>Source IP</th><th>MITRE</th><th>VT</th><th>Status</th><th>Actions</th>
-        </tr></thead>
-        <tbody id="alert-rows"></tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th></th><th>Time</th><th>Level</th><th>Rule</th><th>Description</th>
+            <th>Agent</th><th>Source IP</th><th>MITRE</th><th>VT</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="alert-rows"></tbody>
+        </table>
+      </div>
       <div class="toolbar incident-create" id="incident-create" style="display:none">
         <input type="text" id="incident-title" placeholder="Incident title" />
         <button id="btn-incident" onclick="createIncident()">Create incident (0)</button>
@@ -114,10 +131,12 @@
     </section>
     <section id="view-incidents" style="display:none">
       <h2>Incidents</h2>
-      <table>
-        <thead><tr><th>Created</th><th>Title</th><th>Alerts</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody id="incident-rows"></tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Created</th><th>Title</th><th>Alerts</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="incident-rows"></tbody>
+        </table>
+      </div>
       <p class="empty" id="incidents-empty">No incidents yet. Select alerts on the Alerts page to create one.</p>
     </section>
     <section id="view-dashboards" style="display:none" class="dashboards">
