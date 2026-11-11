@@ -38,3 +38,6 @@ Thumbs.db
 
 # Firebase CLI local artifacts
 .firebase/
+
+# local-only lab report drafts (not for GitHub)
+docs/

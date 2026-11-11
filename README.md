@@ -20,8 +20,7 @@ React SPA (Firebase Hosting) ↔ Firebase Auth / Firestore / FCM
 ```
 
 Both VMs run on a Proxmox homelab host (`192.168.2.10`) on a flat LAN
-(`192.168.2.0/24`, `vmbr0`). See [docs/proxmox-setup.md](docs/proxmox-setup.md)
-for the bring-up guide.
+(`192.168.2.0/24`, `vmbr0`).
 
 Key design points:
 - Splunk free (60-day trial) caps at 500MB/day. Level ≥3 filtering is enforced Wazuh-side plus a UF `blacklist` regex; Splunk Free does not support UF forwarding, so the trial license is used for the lab window — stated trade-off.
@@ -56,8 +55,7 @@ Key design points:
 ├── bridge/                         # Node.js daemon: tail → dedupe → VT → Firestore → FCM
 ├── ui/                             # React + Vite SPA (alerts, incidents, dashboards, FCM)
 ├── firestore.rules / firestore.indexes.json / firebase.json
-├── README.md                       # This file
-└── docs/                           # Report, MITRE mapping, Proxmox bring-up (docs/proxmox-setup.md)
+└── README.md                       # This file
 ```
 
 ## Demo mode (no backend)
