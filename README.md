@@ -10,7 +10,7 @@ Cloud computing class project. Solo. A web-based SIEM dashboard backed by Fireba
 ## Architecture
 
 ```
-[Agent VM: Ubuntu, 1vCPU/2GB] --Wazuh agent--> [SOC VM: Ubuntu, 4vCPU/6GB, NAT network]
+[Agent VM: Ubuntu, 1vCPU/2GB] --Wazuh agent--> [SOC VM: Ubuntu, 4vCPU/6GB]
      (hydra/nmap/privesc demo)         ├─ Wazuh single-node (manager / indexer / dashboard)
                                        ├─ Splunk Enterprise (trial license, 500MB/day cap)
                                        ├─ Splunk Universal Forwarder (container; tails manager log bind mount, level ≥3)
@@ -18,6 +18,10 @@ Cloud computing class project. Solo. A web-based SIEM dashboard backed by Fireba
 
 React SPA (Firebase Hosting) ↔ Firebase Auth / Firestore / FCM
 ```
+
+Both VMs run on a Proxmox homelab host (`192.168.2.10`) on a flat LAN
+(`192.168.2.0/24`, `vmbr0`). See [docs/proxmox-setup.md](docs/proxmox-setup.md)
+for the bring-up guide.
 
 Key design points:
 - Splunk free (60-day trial) caps at 500MB/day. Level ≥3 filtering is enforced Wazuh-side plus a UF `blacklist` regex; Splunk Free does not support UF forwarding, so the trial license is used for the lab window — stated trade-off.
@@ -53,7 +57,7 @@ Key design points:
 ├── ui/                             # React + Vite SPA (alerts, incidents, dashboards, FCM)
 ├── firestore.rules / firestore.indexes.json / firebase.json
 ├── README.md                       # This file
-└── docs/                           # Report, architecture diagram, MITRE mapping (Week 4)
+└── docs/                           # Report, MITRE mapping, Proxmox bring-up (docs/proxmox-setup.md)
 ```
 
 ## Demo mode (no backend)
